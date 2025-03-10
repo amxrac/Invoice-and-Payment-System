@@ -2,9 +2,12 @@
 using Invoice_and_Payment_System.DTOs;
 using Invoice_and_Payment_System.Models;
 using Invoice_and_Payment_System.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
+using System.Security.Claims;
 
 namespace Invoice_and_Payment_System.Controllers
 {
@@ -98,9 +101,8 @@ namespace Invoice_and_Payment_System.Controllers
             {
                 return BadRequest(new
                 {
-                    message = "Please verify your email or phone number before logging in.",
+                    message = "Please verify your email before logging in.",
                     emailVerification = "api/auth/verify-email",
-                    phoneVerification = "api/auth/verify-phone"
                 });
             }
 
@@ -140,7 +142,7 @@ namespace Invoice_and_Payment_System.Controllers
             var verificationLink = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?email={model.Email}&token={Uri.EscapeDataString(token)}";
 
             var subject = "Verify Your Email";
-            var body = $"Click the following link to verify your email. This link will be invalid in 12 hours: <a href='{verificationLink}'>Verify Email</a>";
+            var body = $"Click the following link to verify your email. This link is valid for 12 hours: <a href='{verificationLink}'>Verify Email</a>";
 
 
             await _emailService.SendEmailAsync(model.Email, subject, body);
@@ -167,10 +169,49 @@ namespace Invoice_and_Payment_System.Controllers
                 return BadRequest(new { message = "Invalid token or email confirmation failed." });
             }
 
-            user.EmailConfirmed = true;
             await _userManager.UpdateAsync(user);
             await _userManager.UpdateSecurityStampAsync(user);
             return Ok(new { message = "Email verified successfully. Please login." });
+        }
+
+        [Authorize]
+        [HttpGet("profile")]
+        public async Task<IActionResult> Profile()
+        {
+            var userEmail = User.FindFirstValue(ClaimTypes.Email);
+
+            if (userEmail == null)
+            {
+                return BadRequest(new { message = "Invalid email." });
+
+            }
+            var user = await _userManager.FindByEmailAsync(userEmail);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            if (user == null)
+            {
+                return BadRequest(new { message = "Invalid user." });
+            }
+
+            if (!user.EmailConfirmed)
+            {
+                return BadRequest(new {
+                    message = "Please verify your email.",
+                    emailVerification = "api/auth/verify-email",
+                });
+            }
+
+            return Ok(new
+            {
+                message = "User profile",
+                user = new
+                {
+                    id = user.Id,
+                    name = user.Name,
+                    email = user.Email,
+                    role = roles.FirstOrDefault()
+                }
+            });
         }
 
     }
