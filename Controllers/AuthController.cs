@@ -16,13 +16,15 @@ namespace Invoice_and_Payment_System.Controllers
         private readonly UserManager<AppUser> _userManager;
         private readonly SignInManager<AppUser> _signInManager;
         private readonly TokenGenerator _tokenGenerator;
+        private readonly IEmailService _emailService;
 
-        public AuthController(AppDbContext context, UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, TokenGenerator tokenGenerator)
+        public AuthController(AppDbContext context, UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, TokenGenerator tokenGenerator, IEmailService emailService)
         {
             _context = context;
             _userManager = userManager;
             _signInManager = signInManager;
             _tokenGenerator = tokenGenerator;
+            _emailService = emailService;
         }
 
         [HttpPost("register")]
@@ -110,7 +112,7 @@ namespace Invoice_and_Payment_System.Controllers
             }
 
             var token = await _tokenGenerator.GenerateToken(user);
-            var role = await _userManager.GetRolesAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
             return Ok(new
             {
                 message = "Login successful",
@@ -119,12 +121,57 @@ namespace Invoice_and_Payment_System.Controllers
                 {
                     name = user.Name,
                     email = user.Email,
-                    role = role
+                    role = roles.FirstOrDefault()
                 }
             });
 
         }
 
+        [HttpPost("verify-email")]
+        public async Task<IActionResult> VerifyEmail(VerifyEmailDTO model)
+        {
+            var user = await _userManager.FindByEmailAsync(model.Email);
+            if (user == null)
+            {
+                return BadRequest(new { message = "User not found." });
+            }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var verificationLink = $"{Request.Scheme}://{Request.Host}/api/auth/confirm-email?email={model.Email}&token={Uri.EscapeDataString(token)}";
+
+            var subject = "Verify Your Email";
+            var body = $"Click the following link to verify your email. This link will be invalid in 12 hours: <a href='{verificationLink}'>Verify Email</a>";
+
+
+            await _emailService.SendEmailAsync(model.Email, subject, body);
+            return Ok(new { message = "Verification email sent." });
+        }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(string email, string token)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                return BadRequest(new { message = "Invalid email." });
+            }
+
+            if (user.EmailConfirmed)
+            {
+                return BadRequest(new { message = "Email is already verified." });
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+            if (!result.Succeeded)
+            {
+                return BadRequest(new { message = "Invalid token or email confirmation failed." });
+            }
+
+            user.EmailConfirmed = true;
+            await _userManager.UpdateAsync(user);
+            await _userManager.UpdateSecurityStampAsync(user);
+            return Ok(new { message = "Email verified successfully. Please login." });
+        }
 
     }
 }

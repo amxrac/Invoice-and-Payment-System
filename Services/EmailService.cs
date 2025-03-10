@@ -50,11 +50,18 @@ namespace Invoice_and_Payment_System.Services
 
                 using var client = new SmtpClient();
 
-                await client.ConnectAsync(host, port, SecureSocketOptions.StartTls);
-                await client.AuthenticateAsync(email, password);
-                await client.SendAsync(message);
-                await client.DisconnectAsync(true);
+                client.Timeout = 30000;
 
+                _logger.LogInformation("Connecting to SMTP server {Host}:{Port}", host, port);
+                await client.ConnectAsync(host, port, SecureSocketOptions.Auto);
+
+                _logger.LogInformation("Authenticating with SMTP server");
+                await client.AuthenticateAsync(email, password);
+
+                _logger.LogInformation("Sending email to {Recipient}", recipient);
+                await client.SendAsync(message);
+
+                await client.DisconnectAsync(true);
                 _logger.LogInformation("Email sent successfully to {Recipient}", recipient);
             }
             catch (SmtpCommandException ex)
