@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -6,13 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Invoice_and_Payment_System</RootNamespace>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Data\NewFolder\**" />
-    <Content Remove="Data\NewFolder\**" />
-    <EmbeddedResource Remove="Data\NewFolder\**" />
-    <None Remove="Data\NewFolder\**" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.13" />
