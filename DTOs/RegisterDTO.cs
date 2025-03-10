@@ -12,7 +12,9 @@ namespace Invoice_and_Payment_System.DTOs
         public string Email { get; set; }
 
         [Required]
-        [DataType(DataType.Password)]
+        [MinLength(8, ErrorMessage = "Password must be at least 8 characters long.")]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$",
+            ErrorMessage = "Password must contain at least one uppercase letter, one lowercase letter, and one digit.")]
         public string Password { get; set; }
 
         [Required]
